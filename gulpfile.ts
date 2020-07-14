@@ -1,9 +1,10 @@
+
 /*
  * @Description: 
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-14 11:47:58
+ * @LastEditTime: 2020-07-14 21:18:31
  */
 
 
@@ -19,7 +20,7 @@ const zip = require('gulp-zip');
 const tar = require('gulp-tar');
 const pipeConcat = require('pipe-concat')
 const pipeQueue = require('pipe-queue')
-
+const colors= require('colors')
 
 // 配置打包参数
 // ---------------------------------
@@ -66,15 +67,13 @@ const concat = require('pipe-concat');
 gulp.task('clean', () => {
     return del(['./newCode/**', '!./newCode', `./repository/**`, `./compress/**`, `!./repository`, `!./compress`])
 })
+
 gulp.task('init', async () => {
 
     /** 解压zip包*/
     let zipDec: Promise<any> = Promise.resolve();
-    let arry: Array<string> = fs.readdirSync('./newCode');
-    folderNameInitArry = arry.filter(item => {
-        return item !== '.DS_Store' && !(new RegExp(`\\bSWP\\b`)).test(item)
-    })
-    regFolderNameZip = new RegExp(`^H5_${curFolderName}_${preVes}_\\w{32}`, 'i')
+    reddirFuc();
+
     if (packageType === 2) {
         zipDec = zipDecFuc();
     } else if (packageType === 3) {
@@ -109,28 +108,20 @@ gulp.task('init', async () => {
 
 gulp.task('oprRep', async () => {
     let arrTar: Array<any> = [], arrZip: Array<any> = [];
-    folderNameInitArry.forEach(async (ele) => {
-        arrTar.push(gulp.src(`./newCode/${ele}/**`)
-            .pipe(gulp.dest(`./repository/${folderNameRe}/home/${ele}`)))
-    })
-    folderNameInitArry.forEach(async (ele) => {
-        arrZip.push(gulp.src(`./newCode/${ele}/**`)
-            .pipe(gulp.dest(`./repository/${curFolderNameLc}/${curFolderNameLc}/${ele}`)))
-    })
-
+    if (packageType === 2) {
+        arrZip = pushZip();
+    } else if (packageType === 3) {
+        arrTar = pushTar();
+    } else {
+        arrZip = pushZip();
+        arrTar = pushTar();
+    }
     const $pipeQueue = new pipeQueue();
     $pipeQueue.when(...arrTar, ...arrZip).then((next: Function, concat: Function) => {
-        if (curVes !== preVes) {
-            const editName = gulp.src(`./repository/${folderNameRe}`)
-                .pipe(rename(`${curFolderNameFull}`))
-                .pipe(gulp.dest(`./repository`))
-            concat(editName).on('end', next)
-        } else {
-            next()
-        }
-    }
-    ).then((next: Function, concat: Function) => {
-        if (curVes !== preVes) {
+        if (curVes !== preVes && (packageType === 1 || packageType === 3)) {
+            if (!fs.existsSync(`./repository/${curFolderNameFull}`)) {
+                fs.mkdirSync(`./repository/${curFolderNameFull}`)
+            }
             const move = gulp.src(`./repository/${folderNameRe}/**`)
                 .pipe(gulp.dest(`./repository/${curFolderNameFull}`));
             concat(move).on('end', next)
@@ -138,7 +129,7 @@ gulp.task('oprRep', async () => {
             next()
         }
     }).then(async (next: Function, concat: Function) => {
-        if (curVes !== preVes) {
+        if (curVes !== preVes && (packageType === 1 || packageType === 3)) {
             await del([`./repository/${folderNameRe}/**`]);
             next()
         } else {
@@ -150,31 +141,46 @@ gulp.task('oprRep', async () => {
 })
 
 gulp.task('decompress', () => {
-
-    const pakageTar = gulp.src(`./repository/${curFolderNameFull}/**`)
-        .pipe(tar(`${curFolderNameFull}.tar`))
-        .pipe(gulp.dest('./newCode'))
-
-    const pakageZip = gulp.src(`./repository/${curFolderNameLc}/**`)
-        .pipe(zip(`H5_${curFolderNameLc}_${curVes}.zip`))
-        .pipe(md5())
-        .pipe(gulp.dest('./newCode'))
+    let pakageTar: Promise<any> = Promise.resolve(), pakageZip: Promise<any> = Promise.resolve();
+    pakageTar = pakageTarFuc()
+    pakageZip = pakageZipFuc();
     return concat(pakageTar, pakageZip)
 })
 
 gulp.task('pac', gulp.series('init', 'oprRep', 'decompress'))
+
+gulp.task('olpac', () => {
+    curFolderNameFull = stOrPro === 'p' ? `SWP-${curFolderName}-${curVes}-PRO` : `SWP-${curFolderName}-${curVes}-STATIC`;
+    reddirFuc()
+    if (!fs.existsSync(`./newCode/${curFolderNameFull}`)) {
+        fs.renameSync(`./newCode/${folderNameInitArry[0]}`, `./newCode/${curFolderNameFull}`)
+    }
+    return gulp.src(`./newCode/${curFolderNameFull}/**`)
+        .pipe(tar(`${curFolderNameFull}.tar`))
+        .pipe(gulp.dest('./newCode'))
+})
+/**
+ * 读取newCode文件夹内文件夹名称
+ */
+function reddirFuc() {
+    let arry: Array<string> = fs.readdirSync('./newCode');
+    folderNameInitArry = arry.filter(item => {
+        return item !== '.DS_Store' && !(new RegExp(`\\bSWP\\b`)).test(item)
+    })
+}
 /**
  * 解压静态资源包
  */
 function zipDecFuc(): Promise<any> {
     curFolderNameLc = curFolderName.toLowerCase();
     dataZip = fs.readdirSync("./zip");
-    regFolderName = new RegExp(`\\b${curFolderName}\\b`)
+    regFolderNameZip = new RegExp(`^H5_${curFolderName}_${preVes}_\\w{32}`, 'i')
+
     selectFolderZip = dataZip.filter(item => {
         return regFolderNameZip.test(item)
     })
     if (!selectFolderZip || (selectFolderZip as []).length === 0) {
-        console.log('无可替换的远程资源包')
+        console.log(colors.red('未找到静态资源包'));
     }
     if (!fs.existsSync(`repository/${curFolderNameLc}`)) {
         fs.mkdirSync(`repository/${curFolderNameLc}`);
@@ -185,17 +191,19 @@ function zipDecFuc(): Promise<any> {
  * 解压服务器远程资源包
  */
 function tarDecFuc(): Promise<any> {
+   
     data = fs.readdirSync("./tar");
-
+    regFolderName = new RegExp(`\\b${curFolderName}\\b`)
     regRepalceVes = RegExp(`\\b${preVes}\\b`)
     selectFolderTar = data.filter(item => {
         return regFolderName.test(item) && regRepalceVes.test(item)
     })
     if (!selectFolderTar || (selectFolderTar as []).length === 0) {
-        console.log('无可替换的远程资源包')
+        console.log(colors.red('未找到远程资源包'));
     }
     folderNameRe = selectFolderTar[0].split('.tar')[0];
     curFolderNameFull = stOrPro === 'p' ? `SWP-${curFolderName}-${curVes}-PRO` : `SWP-${curFolderName}-${curVes}-STATIC`;
+
     return decompress(`./tar/${selectFolderTar[0]}`, 'repository');
 }
 /**
@@ -211,6 +219,45 @@ function delZipFuc(ele: string) {
  */
 function delTarFuc(ele: string) {
     return del([`./repository/${folderNameRe}/home/${ele}/**`, `!./repository/${folderNameRe}/home/${ele}`])
+}
+/**
+ * 替换远程服务器文件
+ */
+function pushTar() {
+    let arrTar: Array<any> = []
+    folderNameInitArry.forEach(async (ele) => {
+        arrTar.push(gulp.src(`./newCode/${ele}/**`)
+            .pipe(gulp.dest(`./repository/${folderNameRe}/home/${ele}`)))
+    })
+    return arrTar
+}
+/**
+ * 替换静态资源文件
+ */
+function pushZip() {
+    let arrZip: Array<any> = [];
+    folderNameInitArry.forEach(async (ele) => {
+        arrZip.push(gulp.src(`./newCode/${ele}/**`)
+            .pipe(gulp.dest(`./repository/${curFolderNameLc}/${curFolderNameLc}/${ele}`)))
+    })
+    return arrZip
+}
+/**
+ * 远程服务器打包
+ */
+function pakageTarFuc() {
+    return gulp.src(`./repository/${curFolderNameFull}/**`)
+        .pipe(tar(`${curFolderNameFull}.tar`))
+        .pipe(gulp.dest('./newCode'))
+}
+/**
+ * 静态资源打包
+ */
+function pakageZipFuc() {
+    return gulp.src(`./repository/${curFolderNameLc}/**`)
+        .pipe(zip(`H5_${curFolderNameLc}_${curVes}.zip`))
+        .pipe(md5())
+        .pipe(gulp.dest('./newCode'))
 }
 interface folderArry {
     [propName: string]: any

@@ -4,7 +4,7 @@
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-14 11:47:58
+ * @LastEditTime: 2020-07-14 21:18:31
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -73,7 +73,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var gulp_1 = __importDefault(require("gulp"));
-var gulp_rename_1 = __importDefault(require("gulp-rename"));
 var del_1 = __importDefault(require("del"));
 var fs = __importStar(require("fs"));
 var decompress_1 = __importDefault(require("decompress"));
@@ -83,6 +82,7 @@ var zip = require('gulp-zip');
 var tar = require('gulp-tar');
 var pipeConcat = require('pipe-concat');
 var pipeQueue = require('pipe-queue');
+var colors = require('colors');
 // 配置打包参数
 // ---------------------------------
 /** 需替换的模块名称*/
@@ -125,16 +125,12 @@ gulp_1.default.task('clean', function () {
     return del_1.default(['./newCode/**', '!./newCode', "./repository/**", "./compress/**", "!./repository", "!./compress"]);
 });
 gulp_1.default.task('init', function () { return __awaiter(void 0, void 0, void 0, function () {
-    var zipDec, arry, objTar, objZip;
+    var zipDec, objTar, objZip;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 zipDec = Promise.resolve();
-                arry = fs.readdirSync('./newCode');
-                folderNameInitArry = arry.filter(function (item) {
-                    return item !== '.DS_Store' && !(new RegExp("\\bSWP\\b")).test(item);
-                });
-                regFolderNameZip = new RegExp("^H5_" + curFolderName + "_" + preVes + "_\\w{32}", 'i');
+                reddirFuc();
                 if (packageType === 2) {
                     zipDec = zipDecFuc();
                 }
@@ -179,33 +175,22 @@ gulp_1.default.task('oprRep', function () { return __awaiter(void 0, void 0, voi
     var arrTar, arrZip, $pipeQueue;
     return __generator(this, function (_a) {
         arrTar = [], arrZip = [];
-        folderNameInitArry.forEach(function (ele) { return __awaiter(void 0, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                arrTar.push(gulp_1.default.src("./newCode/" + ele + "/**")
-                    .pipe(gulp_1.default.dest("./repository/" + folderNameRe + "/home/" + ele)));
-                return [2 /*return*/];
-            });
-        }); });
-        folderNameInitArry.forEach(function (ele) { return __awaiter(void 0, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                arrZip.push(gulp_1.default.src("./newCode/" + ele + "/**")
-                    .pipe(gulp_1.default.dest("./repository/" + curFolderNameLc + "/" + curFolderNameLc + "/" + ele)));
-                return [2 /*return*/];
-            });
-        }); });
+        if (packageType === 2) {
+            arrZip = pushZip();
+        }
+        else if (packageType === 3) {
+            arrTar = pushTar();
+        }
+        else {
+            arrZip = pushZip();
+            arrTar = pushTar();
+        }
         $pipeQueue = new pipeQueue();
         $pipeQueue.when.apply($pipeQueue, __spreadArrays(arrTar, arrZip)).then(function (next, concat) {
-            if (curVes !== preVes) {
-                var editName = gulp_1.default.src("./repository/" + folderNameRe)
-                    .pipe(gulp_rename_1.default("" + curFolderNameFull))
-                    .pipe(gulp_1.default.dest("./repository"));
-                concat(editName).on('end', next);
-            }
-            else {
-                next();
-            }
-        }).then(function (next, concat) {
-            if (curVes !== preVes) {
+            if (curVes !== preVes && (packageType === 1 || packageType === 3)) {
+                if (!fs.existsSync("./repository/" + curFolderNameFull)) {
+                    fs.mkdirSync("./repository/" + curFolderNameFull);
+                }
                 var move = gulp_1.default.src("./repository/" + folderNameRe + "/**")
                     .pipe(gulp_1.default.dest("./repository/" + curFolderNameFull));
                 concat(move).on('end', next);
@@ -217,7 +202,7 @@ gulp_1.default.task('oprRep', function () { return __awaiter(void 0, void 0, voi
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!(curVes !== preVes)) return [3 /*break*/, 2];
+                        if (!(curVes !== preVes && (packageType === 1 || packageType === 3))) return [3 /*break*/, 2];
                         return [4 /*yield*/, del_1.default(["./repository/" + folderNameRe + "/**"])];
                     case 1:
                         _a.sent();
@@ -234,28 +219,43 @@ gulp_1.default.task('oprRep', function () { return __awaiter(void 0, void 0, voi
     });
 }); });
 gulp_1.default.task('decompress', function () {
-    var pakageTar = gulp_1.default.src("./repository/" + curFolderNameFull + "/**")
-        .pipe(tar(curFolderNameFull + ".tar"))
-        .pipe(gulp_1.default.dest('./newCode'));
-    var pakageZip = gulp_1.default.src("./repository/" + curFolderNameLc + "/**")
-        .pipe(zip("H5_" + curFolderNameLc + "_" + curVes + ".zip"))
-        .pipe(md5())
-        .pipe(gulp_1.default.dest('./newCode'));
+    var pakageTar = Promise.resolve(), pakageZip = Promise.resolve();
+    pakageTar = pakageTarFuc();
+    pakageZip = pakageZipFuc();
     return concat(pakageTar, pakageZip);
 });
 gulp_1.default.task('pac', gulp_1.default.series('init', 'oprRep', 'decompress'));
+gulp_1.default.task('olpac', function () {
+    curFolderNameFull = stOrPro === 'p' ? "SWP-" + curFolderName + "-" + curVes + "-PRO" : "SWP-" + curFolderName + "-" + curVes + "-STATIC";
+    reddirFuc();
+    if (!fs.existsSync("./newCode/" + curFolderNameFull)) {
+        fs.renameSync("./newCode/" + folderNameInitArry[0], "./newCode/" + curFolderNameFull);
+    }
+    return gulp_1.default.src("./newCode/" + curFolderNameFull + "/**")
+        .pipe(tar(curFolderNameFull + ".tar"))
+        .pipe(gulp_1.default.dest('./newCode'));
+});
+/**
+ * 读取newCode文件夹内文件夹名称
+ */
+function reddirFuc() {
+    var arry = fs.readdirSync('./newCode');
+    folderNameInitArry = arry.filter(function (item) {
+        return item !== '.DS_Store' && !(new RegExp("\\bSWP\\b")).test(item);
+    });
+}
 /**
  * 解压静态资源包
  */
 function zipDecFuc() {
     curFolderNameLc = curFolderName.toLowerCase();
     dataZip = fs.readdirSync("./zip");
-    regFolderName = new RegExp("\\b" + curFolderName + "\\b");
+    regFolderNameZip = new RegExp("^H5_" + curFolderName + "_" + preVes + "_\\w{32}", 'i');
     selectFolderZip = dataZip.filter(function (item) {
         return regFolderNameZip.test(item);
     });
     if (!selectFolderZip || selectFolderZip.length === 0) {
-        console.log('无可替换的远程资源包');
+        console.log(colors.red('未找到静态资源包'));
     }
     if (!fs.existsSync("repository/" + curFolderNameLc)) {
         fs.mkdirSync("repository/" + curFolderNameLc);
@@ -267,12 +267,13 @@ function zipDecFuc() {
  */
 function tarDecFuc() {
     data = fs.readdirSync("./tar");
+    regFolderName = new RegExp("\\b" + curFolderName + "\\b");
     regRepalceVes = RegExp("\\b" + preVes + "\\b");
     selectFolderTar = data.filter(function (item) {
         return regFolderName.test(item) && regRepalceVes.test(item);
     });
     if (!selectFolderTar || selectFolderTar.length === 0) {
-        console.log('无可替换的远程资源包');
+        console.log(colors.red('未找到远程资源包'));
     }
     folderNameRe = selectFolderTar[0].split('.tar')[0];
     curFolderNameFull = stOrPro === 'p' ? "SWP-" + curFolderName + "-" + curVes + "-PRO" : "SWP-" + curFolderName + "-" + curVes + "-STATIC";
@@ -291,4 +292,51 @@ function delZipFuc(ele) {
  */
 function delTarFuc(ele) {
     return del_1.default(["./repository/" + folderNameRe + "/home/" + ele + "/**", "!./repository/" + folderNameRe + "/home/" + ele]);
+}
+/**
+ * 替换远程服务器文件
+ */
+function pushTar() {
+    var _this = this;
+    var arrTar = [];
+    folderNameInitArry.forEach(function (ele) { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            arrTar.push(gulp_1.default.src("./newCode/" + ele + "/**")
+                .pipe(gulp_1.default.dest("./repository/" + folderNameRe + "/home/" + ele)));
+            return [2 /*return*/];
+        });
+    }); });
+    return arrTar;
+}
+/**
+ * 替换静态资源文件
+ */
+function pushZip() {
+    var _this = this;
+    var arrZip = [];
+    folderNameInitArry.forEach(function (ele) { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            arrZip.push(gulp_1.default.src("./newCode/" + ele + "/**")
+                .pipe(gulp_1.default.dest("./repository/" + curFolderNameLc + "/" + curFolderNameLc + "/" + ele)));
+            return [2 /*return*/];
+        });
+    }); });
+    return arrZip;
+}
+/**
+ * 远程服务器打包
+ */
+function pakageTarFuc() {
+    return gulp_1.default.src("./repository/" + curFolderNameFull + "/**")
+        .pipe(tar(curFolderNameFull + ".tar"))
+        .pipe(gulp_1.default.dest('./newCode'));
+}
+/**
+ * 静态资源打包
+ */
+function pakageZipFuc() {
+    return gulp_1.default.src("./repository/" + curFolderNameLc + "/**")
+        .pipe(zip("H5_" + curFolderNameLc + "_" + curVes + ".zip"))
+        .pipe(md5())
+        .pipe(gulp_1.default.dest('./newCode'));
 }

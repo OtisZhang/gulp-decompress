@@ -16,6 +16,7 @@
     "@types/decompress": "^4.2.3",
     "@types/gulp": "^4.0.6",
     "@types/gulp-rename": "0.0.33",
+    "colors": "^1.4.0",
     "decompress": "^4.2.1",
     "del": "^4.1.1",
     "gulp": "^4.0.2",

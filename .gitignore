@@ -1,7 +1,11 @@
 node_modules
-zip/
-tar/
-newCode/
-repository/
+zip/*
+!zip
+tar/*
+!tar
+newCode/*
+!newCode
+repository/*
+!repository
 .DS_Store
 __MACOSX/
