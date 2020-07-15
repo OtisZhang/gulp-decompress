@@ -9,3 +9,4 @@ repository/*
 !repository
 .DS_Store
 __MACOSX/
+!.gitkeep
