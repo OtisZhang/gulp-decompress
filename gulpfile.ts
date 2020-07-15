@@ -4,18 +4,16 @@
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-14 21:18:31
+ * @LastEditTime: 2020-07-15 18:03:16
  */
 
 
 import gulp from 'gulp';
-import rename from "gulp-rename";
 import del from "del"
 import * as fs from 'fs';
 import decompress from "decompress";
 
 const md5 = require('gulp-md5')
-const ts = require('gulp-typescript');
 const zip = require('gulp-zip');
 const tar = require('gulp-tar');
 const pipeConcat = require('pipe-concat')

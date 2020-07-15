@@ -4,7 +4,7 @@
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-14 21:18:31
+ * @LastEditTime: 2020-07-15 18:03:16
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -77,7 +77,6 @@ var del_1 = __importDefault(require("del"));
 var fs = __importStar(require("fs"));
 var decompress_1 = __importDefault(require("decompress"));
 var md5 = require('gulp-md5');
-var ts = require('gulp-typescript');
 var zip = require('gulp-zip');
 var tar = require('gulp-tar');
 var pipeConcat = require('pipe-concat');
