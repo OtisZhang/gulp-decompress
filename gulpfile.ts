@@ -1,10 +1,10 @@
 
 /*
- * @Description: 
+ * @Description:
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-15 18:03:16
+ * @LastEditTime: 2020-07-16 09:47:28
  */
 
 
@@ -18,16 +18,16 @@ const zip = require('gulp-zip');
 const tar = require('gulp-tar');
 const pipeConcat = require('pipe-concat')
 const pipeQueue = require('pipe-queue')
-const colors= require('colors')
+const colors = require('colors')
 
 // 配置打包参数
 // ---------------------------------
 /** 需替换的模块名称*/
 let curFolderName = 'Authority';
 /**打包后的版本号*/
-let curVes = '2.0.19.18';
+let curVes = '2.0.19.20';
 /**打包替换的版本*/
-let preVes = '2.0.19.17';
+let preVes = '2.0.19.19';
 /**如果是两种包都需要，则是1，如果需要静态资源包则2，如果需要tar包则3*/
 let packageType = 1;
 /** 打包是STATIC还是PRO，p是Pro，s是STATIC */
@@ -120,8 +120,11 @@ gulp.task('oprRep', async () => {
             if (!fs.existsSync(`./repository/${curFolderNameFull}`)) {
                 fs.mkdirSync(`./repository/${curFolderNameFull}`)
             }
+            if (!fs.existsSync(`./repository/${curFolderNameFull}/${curFolderNameFull}`)) {
+                fs.mkdirSync(`./repository/${curFolderNameFull}/${curFolderNameFull}`)
+            }
             const move = gulp.src(`./repository/${folderNameRe}/**`)
-                .pipe(gulp.dest(`./repository/${curFolderNameFull}`));
+                .pipe(gulp.dest(`./repository/${curFolderNameFull}/${curFolderNameFull}`));
             concat(move).on('end', next)
         } else {
             next()
@@ -189,7 +192,7 @@ function zipDecFuc(): Promise<any> {
  * 解压服务器远程资源包
  */
 function tarDecFuc(): Promise<any> {
-   
+
     data = fs.readdirSync("./tar");
     regFolderName = new RegExp(`\\b${curFolderName}\\b`)
     regRepalceVes = RegExp(`\\b${preVes}\\b`)
@@ -205,7 +208,7 @@ function tarDecFuc(): Promise<any> {
     return decompress(`./tar/${selectFolderTar[0]}`, 'repository');
 }
 /**
- * 
+ *
  * 删除静态资源包需替换的文件夹
  */
 function delZipFuc(ele: string) {
@@ -213,7 +216,7 @@ function delZipFuc(ele: string) {
 }
 /**
  * 删除服务远程资源包需替换的文件夹
- * 
+ *
  */
 function delTarFuc(ele: string) {
     return del([`./repository/${folderNameRe}/home/${ele}/**`, `!./repository/${folderNameRe}/home/${ele}`])

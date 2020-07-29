@@ -4,7 +4,7 @@
  * @Author: ZhangChuan
  * @Date: 2020-07-01 17:25:56
  * @LastEditors: ZhangChuan
- * @LastEditTime: 2020-07-15 18:03:16
+ * @LastEditTime: 2020-07-16 09:47:28
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -87,9 +87,9 @@ var colors = require('colors');
 /** 需替换的模块名称*/
 var curFolderName = 'Authority';
 /**打包后的版本号*/
-var curVes = '2.0.19.18';
+var curVes = '2.0.19.20';
 /**打包替换的版本*/
-var preVes = '2.0.19.17';
+var preVes = '2.0.19.19';
 /**如果是两种包都需要，则是1，如果需要静态资源包则2，如果需要tar包则3*/
 var packageType = 1;
 /** 打包是STATIC还是PRO，p是Pro，s是STATIC */
@@ -190,8 +190,11 @@ gulp_1.default.task('oprRep', function () { return __awaiter(void 0, void 0, voi
                 if (!fs.existsSync("./repository/" + curFolderNameFull)) {
                     fs.mkdirSync("./repository/" + curFolderNameFull);
                 }
+                if (!fs.existsSync("./repository/" + curFolderNameFull + "/" + curFolderNameFull)) {
+                    fs.mkdirSync("./repository/" + curFolderNameFull + "/" + curFolderNameFull);
+                }
                 var move = gulp_1.default.src("./repository/" + folderNameRe + "/**")
-                    .pipe(gulp_1.default.dest("./repository/" + curFolderNameFull));
+                    .pipe(gulp_1.default.dest("./repository/" + curFolderNameFull + "/" + curFolderNameFull));
                 concat(move).on('end', next);
             }
             else {
