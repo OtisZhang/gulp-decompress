@@ -76,25 +76,33 @@ var gulp_1 = __importDefault(require("gulp"));
 var del_1 = __importDefault(require("del"));
 var fs = __importStar(require("fs"));
 var decompress_1 = __importDefault(require("decompress"));
+var minimist_1 = __importDefault(require("minimist"));
 var md5 = require('gulp-md5');
 var zip = require('gulp-zip');
 var tar = require('gulp-tar');
 var pipeConcat = require('pipe-concat');
 var pipeQueue = require('pipe-queue');
 var colors = require('colors');
+var argv = minimist_1.default(process.argv);
+console.log(minimist_1.default(process.argv));
 // 配置打包参数
 // ---------------------------------
 /** 需替换的模块名称*/
-var curFolderName = 'Authority';
+var curFolderName = argv.cuf;
 /**打包后的版本号*/
-var curVes = '2.0.19.20';
+var curVes = argv.curVes;
 /**打包替换的版本*/
-var preVes = '2.0.19.19';
+var preVes = argv.preVes;
 /**如果是两种包都需要，则是1，如果需要静态资源包则2，如果需要tar包则3*/
-var packageType = 1;
+var packageType = argv.packageType;
 /** 打包是STATIC还是PRO，p是Pro，s是STATIC */
-var stOrPro = 'p';
+var stOrPro = argv.stOrPro;
+var firstName = argv.firstName;
+/** 是否替换整个文件夹 true为是 */
+var whetherFile = argv.whetherFile;
 // -----------------------------------
+// olpac gulp olpac --curFolderName='BusinessCard' --curVes='1.0.3' --firstName="YQT-SWP" --stOrPro='s'
+// pac gulp pac --curFolderName='BusinessCard' --curVes='1.0.3' --firstName="YQT-SWP" --preVes='2.0.19.23' --packageType=3 --stOrPro='s' --whetherFile=false
 /**匹配成功的tar包名称*/
 var folderNameRe;
 /**tar包文件全名*/
@@ -228,14 +236,24 @@ gulp_1.default.task('decompress', function () {
 });
 gulp_1.default.task('pac', gulp_1.default.series('init', 'oprRep', 'decompress'));
 gulp_1.default.task('olpac', function () {
-    curFolderNameFull = stOrPro === 'p' ? "SWP-" + curFolderName + "-" + curVes + "-PRO" : "SWP-" + curFolderName + "-" + curVes + "-STATIC";
+    curFolderNameFull = stOrPro === 'p' ? firstName + "-" + curFolderName + "-" + curVes + "-PRO" : firstName + "-" + curFolderName + "-" + curVes + "-STATIC";
     reddirFuc();
     if (!fs.existsSync("./newCode/" + curFolderNameFull)) {
-        fs.renameSync("./newCode/" + folderNameInitArry[0], "./newCode/" + curFolderNameFull);
+        fs.mkdirSync("./newCode/" + curFolderNameFull);
+        fs.mkdirSync("./newCode/" + curFolderNameFull + "/" + curFolderNameFull);
+        // fs.mkdirSync(`./newCode/${curFolderNameFull}/${curFolderNameFull}`)
     }
-    return gulp_1.default.src("./newCode/" + curFolderNameFull + "/**")
-        .pipe(tar(curFolderNameFull + ".tar"))
-        .pipe(gulp_1.default.dest('./newCode'));
+    var $pipeQueue = new pipeQueue();
+    var move = gulp_1.default.src("./newCode/" + folderNameInitArry[0] + "/**")
+        .pipe(gulp_1.default.dest("./newCode/" + curFolderNameFull + "/" + curFolderNameFull));
+    console.log(folderNameInitArry, 3333, curFolderNameFull);
+    $pipeQueue.when(move).then(function (next, concat) {
+        var decompress = gulp_1.default.src("./newCode/" + curFolderNameFull + "/**")
+            .pipe(tar(curFolderNameFull + ".tar"))
+            .pipe(gulp_1.default.dest('./newCode'));
+        concat(decompress).on('end', next);
+    });
+    return $pipeQueue.promise();
 });
 /**
  * 读取newCode文件夹内文件夹名称
@@ -278,7 +296,7 @@ function tarDecFuc() {
         console.log(colors.red('未找到远程资源包'));
     }
     folderNameRe = selectFolderTar[0].split('.tar')[0];
-    curFolderNameFull = stOrPro === 'p' ? "SWP-" + curFolderName + "-" + curVes + "-PRO" : "SWP-" + curFolderName + "-" + curVes + "-STATIC";
+    curFolderNameFull = stOrPro === 'p' ? firstName + "-" + curFolderName + "-" + curVes + "-PRO" : firstName + "-" + curFolderName + "-" + curVes + "-STATIC";
     return decompress_1.default("./tar/" + selectFolderTar[0], 'repository');
 }
 /**
@@ -293,7 +311,12 @@ function delZipFuc(ele) {
  *
  */
 function delTarFuc(ele) {
-    return del_1.default(["./repository/" + folderNameRe + "/home/" + ele + "/**", "!./repository/" + folderNameRe + "/home/" + ele]);
+    if (whetherFile) {
+        return del_1.default(["./repository/" + folderNameRe + "/home/**", "!./repository/" + folderNameRe + "/" + ele]);
+    }
+    else {
+        return del_1.default(["./repository/" + folderNameRe + "/home/" + ele + "/**", "!./repository/" + folderNameRe + "/home/" + ele]);
+    }
 }
 /**
  * 替换远程服务器文件
@@ -303,8 +326,14 @@ function pushTar() {
     var arrTar = [];
     folderNameInitArry.forEach(function (ele) { return __awaiter(_this, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            arrTar.push(gulp_1.default.src("./newCode/" + ele + "/**")
-                .pipe(gulp_1.default.dest("./repository/" + folderNameRe + "/home/" + ele)));
+            if (whetherFile) {
+                arrTar.push(gulp_1.default.src("./newCode/" + ele + "/**")
+                    .pipe(gulp_1.default.dest("./repository/" + folderNameRe + "/" + ele)));
+            }
+            else {
+                arrTar.push(gulp_1.default.src("./newCode/" + ele + "/**")
+                    .pipe(gulp_1.default.dest("./repository/" + folderNameRe + "/home/" + ele)));
+            }
             return [2 /*return*/];
         });
     }); });

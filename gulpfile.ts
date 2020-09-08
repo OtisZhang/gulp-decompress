@@ -12,6 +12,7 @@ import gulp from 'gulp';
 import del from "del"
 import * as fs from 'fs';
 import decompress from "decompress";
+import minist from "minimist"
 
 const md5 = require('gulp-md5')
 const zip = require('gulp-zip');
@@ -19,21 +20,26 @@ const tar = require('gulp-tar');
 const pipeConcat = require('pipe-concat')
 const pipeQueue = require('pipe-queue')
 const colors = require('colors')
-
+const argv = minist(process.argv)
+console.log(minist(process.argv))
 // 配置打包参数
 // ---------------------------------
 /** 需替换的模块名称*/
-let curFolderName = 'Authority';
+let curFolderName = argv.cuf;
 /**打包后的版本号*/
-let curVes = '2.0.19.20';
+let curVes = argv.curVes;
 /**打包替换的版本*/
-let preVes = '2.0.19.19';
+let preVes = argv.preVes;
 /**如果是两种包都需要，则是1，如果需要静态资源包则2，如果需要tar包则3*/
-let packageType = 1;
+let packageType = argv.packageType;
 /** 打包是STATIC还是PRO，p是Pro，s是STATIC */
-let stOrPro = 'p';
+let stOrPro = argv.stOrPro;
+let firstName = argv.firstName;
+/** 是否替换整个文件夹 true为是 */
+let whetherFile = argv.whetherFile
 // -----------------------------------
-
+// olpac gulp olpac --curFolderName='BusinessCard' --curVes='1.0.3' --firstName="YQT-SWP" --stOrPro='s'
+// pac gulp pac --curFolderName='BusinessCard' --curVes='1.0.3' --firstName="YQT-SWP" --preVes='2.0.19.23' --packageType=3 --stOrPro='s' --whetherFile=false
 
 /**匹配成功的tar包名称*/
 let folderNameRe: string;
@@ -151,14 +157,26 @@ gulp.task('decompress', () => {
 gulp.task('pac', gulp.series('init', 'oprRep', 'decompress'))
 
 gulp.task('olpac', () => {
-    curFolderNameFull = stOrPro === 'p' ? `SWP-${curFolderName}-${curVes}-PRO` : `SWP-${curFolderName}-${curVes}-STATIC`;
+    curFolderNameFull = stOrPro === 'p' ? `${firstName}-${curFolderName}-${curVes}-PRO` : `${firstName}-${curFolderName}-${curVes}-STATIC`;
     reddirFuc()
+
     if (!fs.existsSync(`./newCode/${curFolderNameFull}`)) {
-        fs.renameSync(`./newCode/${folderNameInitArry[0]}`, `./newCode/${curFolderNameFull}`)
+        fs.mkdirSync(`./newCode/${curFolderNameFull}`)
+        fs.mkdirSync(`./newCode/${curFolderNameFull}/${curFolderNameFull}`)
+        // fs.mkdirSync(`./newCode/${curFolderNameFull}/${curFolderNameFull}`)
     }
-    return gulp.src(`./newCode/${curFolderNameFull}/**`)
-        .pipe(tar(`${curFolderNameFull}.tar`))
-        .pipe(gulp.dest('./newCode'))
+
+    const $pipeQueue = new pipeQueue();
+    const move = gulp.src(`./newCode/${folderNameInitArry[0]}/**`)
+        .pipe(gulp.dest(`./newCode/${curFolderNameFull}/${curFolderNameFull}`))
+    console.log(folderNameInitArry, 3333, curFolderNameFull)
+    $pipeQueue.when(move).then((next: Function, concat: Function) => {
+        const decompress = gulp.src(`./newCode/${curFolderNameFull}/**`)
+            .pipe(tar(`${curFolderNameFull}.tar`))
+            .pipe(gulp.dest('./newCode'))
+        concat(decompress).on('end', next)
+    })
+    return $pipeQueue.promise();
 })
 /**
  * 读取newCode文件夹内文件夹名称
@@ -203,7 +221,7 @@ function tarDecFuc(): Promise<any> {
         console.log(colors.red('未找到远程资源包'));
     }
     folderNameRe = selectFolderTar[0].split('.tar')[0];
-    curFolderNameFull = stOrPro === 'p' ? `SWP-${curFolderName}-${curVes}-PRO` : `SWP-${curFolderName}-${curVes}-STATIC`;
+    curFolderNameFull = stOrPro === 'p' ? `${firstName}-${curFolderName}-${curVes}-PRO` : `${firstName}-${curFolderName}-${curVes}-STATIC`;
 
     return decompress(`./tar/${selectFolderTar[0]}`, 'repository');
 }
@@ -219,7 +237,11 @@ function delZipFuc(ele: string) {
  *
  */
 function delTarFuc(ele: string) {
-    return del([`./repository/${folderNameRe}/home/${ele}/**`, `!./repository/${folderNameRe}/home/${ele}`])
+    if (whetherFile) {
+        return del([`./repository/${folderNameRe}/home/**`, `!./repository/${folderNameRe}/${ele}`])
+    } else {
+        return del([`./repository/${folderNameRe}/home/${ele}/**`, `!./repository/${folderNameRe}/home/${ele}`])
+    }
 }
 /**
  * 替换远程服务器文件
@@ -227,8 +249,14 @@ function delTarFuc(ele: string) {
 function pushTar() {
     let arrTar: Array<any> = []
     folderNameInitArry.forEach(async (ele) => {
-        arrTar.push(gulp.src(`./newCode/${ele}/**`)
-            .pipe(gulp.dest(`./repository/${folderNameRe}/home/${ele}`)))
+        if (whetherFile) {
+            arrTar.push(gulp.src(`./newCode/${ele}/**`)
+                .pipe(gulp.dest(`./repository/${folderNameRe}/${ele}`)))
+        } else {
+            arrTar.push(gulp.src(`./newCode/${ele}/**`)
+                .pipe(gulp.dest(`./repository/${folderNameRe}/home/${ele}`)))
+        }
+
     })
     return arrTar
 }
